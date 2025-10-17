@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="GPSdemo3.Views.LocationViewPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:viewModels="clr-namespace:GPSdemo3.ViewModels">
+
+    <ContentPage.BindingContext>
+        <viewModels:LocationViewModel />
+    </ContentPage.BindingContext>
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="16">
+
+            <!-- Current Position -->
+            <Label Text="Current Position" FontSize="18" FontAttributes="Bold"/>
+
+            <Button Text="My Location"
+                    Command="{Binding GetLocationCommand}"
+                    BackgroundColor="#4C2BE2"
+                    TextColor="White"
+                    CornerRadius="10"/>
+
+            <ActivityIndicator IsRunning="{Binding IsBusy}"
+                               IsVisible="{Binding IsBusy}" />
+
+            <Label Text="{Binding DisplayLocation}"
+                   FontSize="16"
+                   LineBreakMode="WordWrap" />
+
+            <BoxView HeightRequest="1" Color="#ccc" Margin="0,20,0,10"/>
+
+            <!-- Routes -->
+            <Label Text="Routes (Google Maps)" FontSize="18" FontAttributes="Bold" />
+
+            <Button Text="Route to Table Mountain"
+                    Command="{Binding RouteToTableMountainCommand}"
+                    BackgroundColor="#4C2BE2"
+                    TextColor="White"
+                    CornerRadius="10"/>
+
+            <Button Text="Route to V/A Waterfront"
+                    Command="{Binding RouteToVAWaterfrontCommand}"
+                    BackgroundColor="#4C2BE2"
+                    TextColor="White"
+                    CornerRadius="10"/>
+
+            <Button Text="Route to Cape Point"
+                    Command="{Binding RouteToCapePointCommand}"
+                    BackgroundColor="#4C2BE2"
+                    TextColor="White"
+                    CornerRadius="10"/>
+
+            <BoxView HeightRequest="1" Color="#ccc" Margin="0,20,0,10"/>
+
+            <!-- Saved Locations -->
+            <Label Text="Saved Locations" FontSize="18" FontAttributes="Bold" />
+
+            <CollectionView ItemsSource="{Binding SavedLocations}" HeightRequest="300">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Frame Margin="5" Padding="10" BackgroundColor="#eee" CornerRadius="10">
+                            <VerticalStackLayout>
+                                <Label Text="{Binding Name}" FontAttributes="Bold" />
+                                <Label Text="{Binding Latitude, StringFormat='Lat: {0:F4}'}" FontSize="12" />
+                                <Label Text="{Binding Longitude, StringFormat='Lon: {0:F4}'}" FontSize="12" />
+                                <Label Text="{Binding Timestamp, StringFormat='{0:yyyy-MM-dd HH:mm:ss}'}"
+                                       FontSize="10"
+                                       TextColor="Gray" />
+                                <Button Text="Delete"
+                                        Command="{Binding Source={RelativeSource AncestorType={x:Type viewModels:LocationViewModel}}, Path=DeleteLocationCommand}"
+                                        CommandParameter="{Binding .}"
+                                        BackgroundColor="#E53935"
+                                        TextColor="White"
+                                        CornerRadius="10"
+                                        FontSize="12" />
+                            </VerticalStackLayout>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <Button Text="Refresh Saved Locations"
+                    Command="{Binding LoadLocationsCommand}"
+                    BackgroundColor="#4C2BE2"
+                    TextColor="White"
+                    CornerRadius="10" />
+
+            <!-- Add New Location -->
+            <BoxView HeightRequest="1" Color="#ccc" Margin="0,20,0,10"/>
+
+            <Label Text="Add New Location" FontSize="18" FontAttributes="Bold"/>
+
+            <Entry Placeholder="Location Name" Text="{Binding NewLocationName}" />
+            <Entry Placeholder="Latitude" Keyboard="Numeric" Text="{Binding NewLatitude}" />
+            <Entry Placeholder="Longitude" Keyboard="Numeric" Text="{Binding NewLongitude}" />
+
+            <Button Text="Add Location"
+                    Command="{Binding AddLocationCommand}"
+                    BackgroundColor="#4C2BE2"
+                    TextColor="White"
+                    CornerRadius="10" />
+
+            <Label FontSize="12"
+                   Text="Note: You can manually add or delete locations from your SQL Server database."
+                   TextColor="Gray" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
