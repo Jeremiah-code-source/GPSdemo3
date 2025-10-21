@@ -9,7 +9,7 @@ namespace GPSdemo3.Views
         public LocationViewPage()
         {
             InitializeComponent();
-            BindingContext ??= new LocationViewModel(); // Ensure binding
+            // Do NOT reset BindingContext here — it’s already set in XAML
         }
 
         private void OnLocationButtonClicked(object sender, EventArgs e)

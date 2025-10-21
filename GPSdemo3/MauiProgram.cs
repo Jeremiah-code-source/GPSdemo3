@@ -4,7 +4,7 @@ namespace GPSdemo3
 {
     public static class DatabaseConfig
     {
-        public static string ConnectionString = "Server=(localdb)\\MSSQLLocalDB;Database=C:\\USERS\\KENAN PRINS\\MATRICLEARNINGDB.MDF;Trusted_Connection=True;TrustServerCertificate=True;";
+        public static string ConnectionString = "Data Source=(LocalDB)\\MSSQLLocalDB;AttachDbFilename=C:\\Users\\Kenan Prins\\MatricLearningDB.mdf;Integrated Security=True;Connect Timeout=30;";
     }
 
     public static class MauiProgram

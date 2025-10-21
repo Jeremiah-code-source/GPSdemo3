@@ -2,38 +2,51 @@
 using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Threading.Tasks;
+using GPSdemo3.Models;
+
 
 namespace GPSdemo3.Services
 {
     public class DatabaseService
     {
         // <-- REPLACE this with your actual connection string
-        private readonly string _connectionString = "Server=(localdb)\\MSSQLLocalDB;Database=C:\\USERS\\KENAN PRINS\\MATRICLEARNINGDB.MDF;Trusted_Connection=True;TrustServerCertificate=True;";
+        private readonly string _connectionString =
+        "Data Source=(LocalDB)\\MSSQLLocalDB;AttachDbFilename=C:\\Users\\Kenan Prins\\MatricLearningDB.mdf;Integrated Security=True;Connect Timeout=30;";
 
-        public async Task SaveLocationAsync(string name, double latitude, double longitude)
+
+        public async Task SaveLocationAsync(LocationModel location)
         {
             try
             {
-                using var conn = new SqlConnection(_connectionString);
-                const string query = "INSERT INTO Locations (Name, Latitude, Longitude) VALUES (@Name, @Latitude, @Longitude)";
-                using var cmd = new SqlCommand(query, conn);
-                cmd.Parameters.AddWithValue("@Name", name ?? (object)DBNull.Value);
-                cmd.Parameters.AddWithValue("@Latitude", latitude);
-                cmd.Parameters.AddWithValue("@Longitude", longitude);
+                using (SqlConnection conn = new SqlConnection(_connectionString))
+                {
+                    await conn.OpenAsync();
 
-                await conn.OpenAsync();
-                await cmd.ExecuteNonQueryAsync();
+                    string query = "INSERT INTO Locations (Name, Latitude, Longitude) VALUES (@Name, @Latitude, @Longitude)";
+                    using (SqlCommand cmd = new SqlCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@Name", location.Name);
+                        cmd.Parameters.AddWithValue("@Latitude", location.Latitude);
+                        cmd.Parameters.AddWithValue("@Longitude", location.Longitude);
+
+                        int rows = await cmd.ExecuteNonQueryAsync();
+                        Console.WriteLine($"✅ {rows} row(s) inserted successfully.");
+                    }
+                }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"SaveLocationAsync error: {ex.Message}");
-                throw;
+                Console.WriteLine($"❌ Error saving location: {ex.Message}");
+                if (ex.InnerException != null)
+                    Console.WriteLine($"   Inner: {ex.InnerException.Message}");
             }
         }
 
-        public async Task<List<LocationInfo>> GetAllLocationsAsync()
+
+
+        public async Task<List<LocationModel>> GetAllLocationsAsync()
         {
-            var list = new List<LocationInfo>();
+            var list = new List<LocationModel>();
 
             try
             {
@@ -45,7 +58,7 @@ namespace GPSdemo3.Services
                 using var reader = await cmd.ExecuteReaderAsync();
                 while (await reader.ReadAsync())
                 {
-                    var info = new LocationInfo
+                    var info = new LocationModel
                     {
                         Id = reader.GetInt32(0),
                         Name = reader.IsDBNull(1) ? string.Empty : reader.GetString(1),
@@ -84,17 +97,4 @@ namespace GPSdemo3.Services
             }
         }
     }
-
-    public class LocationInfo
-    {
-        public int Id { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public double Latitude { get; set; }
-        public double Longitude { get; set; }
-        public DateTime Timestamp { get; set; }
-    }
 }
-
-
-
-//"Server=(localdb)\\MSSQLLocalDB;Database=C:\\USERS\\KENAN PRINS\\MATRICLEARNINGDB.MDF;Trusted_Connection=True;TrustServerCertificate=True;"

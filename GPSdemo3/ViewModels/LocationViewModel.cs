@@ -10,6 +10,7 @@ using Microsoft.Maui.Devices.Sensors;
 using Microsoft.Maui.ApplicationModel;
 using GPSdemo3.Configuration;
 using GPSdemo3.Services;
+using GPSdemo3.Models;
 
 namespace GPSdemo3.ViewModels
 {
@@ -21,7 +22,7 @@ namespace GPSdemo3.ViewModels
         private string _address;
         private string _statusMessage;
 
-        // New fields for manual adding
+        // Fields for manual adding
         private string _newLocationName;
         private string _newLatitude;
         private string _newLongitude;
@@ -37,8 +38,8 @@ namespace GPSdemo3.ViewModels
         public ICommand AddLocationCommand { get; }
         public ICommand DeleteLocationCommand { get; }
 
-        // Database-linked collection
-        public ObservableCollection<LocationInfo> SavedLocations { get; set; } = new ObservableCollection<LocationInfo>();
+        // Collection of saved locations from DB
+        public ObservableCollection<LocationModel> SavedLocations { get; set; } = new();
 
         public bool IsBusy
         {
@@ -55,25 +56,49 @@ namespace GPSdemo3.ViewModels
         public double? Latitude
         {
             get => _latitude;
-            private set { if (_latitude == value) return; _latitude = value; OnPropertyChanged(nameof(Latitude)); OnPropertyChanged(nameof(DisplayLocation)); }
+            private set
+            {
+                if (_latitude == value) return;
+                _latitude = value;
+                OnPropertyChanged(nameof(Latitude));
+                OnPropertyChanged(nameof(DisplayLocation));
+            }
         }
 
         public double? Longitude
         {
             get => _longitude;
-            private set { if (_longitude == value) return; _longitude = value; OnPropertyChanged(nameof(Longitude)); OnPropertyChanged(nameof(DisplayLocation)); }
+            private set
+            {
+                if (_longitude == value) return;
+                _longitude = value;
+                OnPropertyChanged(nameof(Longitude));
+                OnPropertyChanged(nameof(DisplayLocation));
+            }
         }
 
         public string Address
         {
             get => _address;
-            private set { if (_address == value) return; _address = value; OnPropertyChanged(nameof(Address)); OnPropertyChanged(nameof(DisplayLocation)); }
+            private set
+            {
+                if (_address == value) return;
+                _address = value;
+                OnPropertyChanged(nameof(Address));
+                OnPropertyChanged(nameof(DisplayLocation));
+            }
         }
 
         public string StatusMessage
         {
             get => _statusMessage;
-            private set { if (_statusMessage == value) return; _statusMessage = value; OnPropertyChanged(nameof(StatusMessage)); OnPropertyChanged(nameof(DisplayLocation)); }
+            private set
+            {
+                if (_statusMessage == value) return;
+                _statusMessage = value;
+                OnPropertyChanged(nameof(StatusMessage));
+                OnPropertyChanged(nameof(DisplayLocation));
+            }
         }
 
         public string DisplayLocation
@@ -91,7 +116,7 @@ namespace GPSdemo3.ViewModels
             }
         }
 
-        // New binding properties for Add Location
+        // Bound fields for Add Location form
         public string NewLocationName
         {
             get => _newLocationName;
@@ -124,12 +149,16 @@ namespace GPSdemo3.ViewModels
                 async () => await OpenAzureMapsRouteAsync("Cape Point", -34.3568, 18.4975),
                 () => !IsBusy);
 
+            // FIXED: Proper async command initialization
             LoadLocationsCommand = new Command(async () => await LoadLocationsAsync());
             AddLocationCommand = new Command(async () => await AddNewLocationAsync());
-            DeleteLocationCommand = new Command<LocationInfo>(async (loc) => await DeleteLocationAsync(loc));
+            DeleteLocationCommand = new Command<LocationModel>(async (loc) => await DeleteLocationAsync(loc));
+
+            // Load locations on startup
+            Task.Run(async () => await LoadLocationsAsync());
         }
 
-        // Get user device location
+        // Get user's current device location
         private async Task GetLocationAsync()
         {
             try
@@ -177,52 +206,125 @@ namespace GPSdemo3.ViewModels
             }
         }
 
-        // Add new location manually
+        // Add new location manually - FIXED VERSION
         private async Task AddNewLocationAsync()
         {
+            System.Diagnostics.Debug.WriteLine("=== AddNewLocationAsync STARTED ===");
+
             try
             {
-                if (string.IsNullOrWhiteSpace(NewLocationName) ||
-                    string.IsNullOrWhiteSpace(NewLatitude) ||
-                    string.IsNullOrWhiteSpace(NewLongitude))
+                // Validate inputs
+                if (string.IsNullOrWhiteSpace(NewLocationName))
                 {
-                    StatusMessage = "Please fill all fields.";
+                    StatusMessage = "Please enter a location name.";
+                    await Application.Current.MainPage.DisplayAlert("Validation Error", "Please enter a location name.", "OK");
                     return;
                 }
 
-                if (!double.TryParse(NewLatitude, out double lat) || !double.TryParse(NewLongitude, out double lon))
+                if (string.IsNullOrWhiteSpace(NewLatitude))
                 {
-                    StatusMessage = "Invalid latitude or longitude.";
+                    StatusMessage = "Please enter latitude.";
+                    await Application.Current.MainPage.DisplayAlert("Validation Error", "Please enter latitude.", "OK");
                     return;
                 }
 
+                if (string.IsNullOrWhiteSpace(NewLongitude))
+                {
+                    StatusMessage = "Please enter longitude.";
+                    await Application.Current.MainPage.DisplayAlert("Validation Error", "Please enter longitude.", "OK");
+                    return;
+                }
+
+                // Parse coordinates
+                if (!double.TryParse(NewLatitude.Replace(',', '.'), NumberStyles.Any, CultureInfo.InvariantCulture, out double lat))
+                {
+                    StatusMessage = "Invalid latitude format.";
+                    await Application.Current.MainPage.DisplayAlert("Validation Error", "Invalid latitude format. Use decimal numbers (e.g., -33.9248)", "OK");
+                    return;
+                }
+
+                if (!double.TryParse(NewLongitude.Replace(',', '.'), NumberStyles.Any, CultureInfo.InvariantCulture, out double lon))
+                {
+                    StatusMessage = "Invalid longitude format.";
+                    await Application.Current.MainPage.DisplayAlert("Validation Error", "Invalid longitude format. Use decimal numbers (e.g., 18.4241)", "OK");
+                    return;
+                }
+
+                System.Diagnostics.Debug.WriteLine($"Parsed values - Name: {NewLocationName}, Lat: {lat}, Lon: {lon}");
+
+                // Create new location
+                var newLocation = new LocationModel
+                {
+                    Name = NewLocationName,
+                    Latitude = lat,
+                    Longitude = lon,
+                    Timestamp = DateTime.Now
+                };
+
+                System.Diagnostics.Debug.WriteLine("Creating DatabaseService instance...");
                 var db = new DatabaseService();
-                await db.SaveLocationAsync(NewLocationName, lat, lon);
 
-                StatusMessage = $"Added '{NewLocationName}' successfully.";
+                System.Diagnostics.Debug.WriteLine("Calling SaveLocationAsync...");
+                await db.SaveLocationAsync(newLocation);
+
+                System.Diagnostics.Debug.WriteLine("Location saved successfully!");
+
+                // Show success message
+                StatusMessage = $"? Added '{NewLocationName}' successfully!";
+                await Application.Current.MainPage.DisplayAlert("Success", $"Location '{NewLocationName}' has been saved!", "OK");
+
+                // Reload locations
                 await LoadLocationsAsync();
 
                 // Clear input fields
                 NewLocationName = string.Empty;
                 NewLatitude = string.Empty;
                 NewLongitude = string.Empty;
+
+                System.Diagnostics.Debug.WriteLine("=== AddNewLocationAsync COMPLETED ===");
             }
             catch (Exception ex)
             {
-                StatusMessage = "Error adding location: " + ex.Message;
+                System.Diagnostics.Debug.WriteLine($"? ERROR in AddNewLocationAsync: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack Trace: {ex.StackTrace}");
+
+                if (ex.InnerException != null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Inner Exception: {ex.InnerException.Message}");
+                }
+
+                StatusMessage = $"Error: {ex.Message}";
+                await Application.Current.MainPage.DisplayAlert("Error", $"Failed to add location:\n{ex.Message}", "OK");
             }
         }
 
         // Delete location from DB
-        private async Task DeleteLocationAsync(LocationInfo location)
+        private async Task DeleteLocationAsync(LocationModel location)
         {
             if (location == null) return;
 
-            var db = new DatabaseService();
-            await db.DeleteLocationAsync(location.Id);
+            try
+            {
+                bool confirm = await Application.Current.MainPage.DisplayAlert(
+                    "Confirm Delete",
+                    $"Are you sure you want to delete '{location.Name}'?",
+                    "Yes",
+                    "No");
 
-            SavedLocations.Remove(location);
-            StatusMessage = $"Deleted '{location.Name}'.";
+                if (!confirm) return;
+
+                var db = new DatabaseService();
+                await db.DeleteLocationAsync(location.Id);
+
+                SavedLocations.Remove(location);
+                StatusMessage = $"Deleted '{location.Name}'.";
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Delete error: {ex.Message}");
+                StatusMessage = $"Error deleting: {ex.Message}";
+                await Application.Current.MainPage.DisplayAlert("Error", $"Failed to delete location:\n{ex.Message}", "OK");
+            }
         }
 
         // Load all locations from DB
@@ -230,19 +332,27 @@ namespace GPSdemo3.ViewModels
         {
             try
             {
+                System.Diagnostics.Debug.WriteLine("Loading locations from database...");
+
                 var db = new DatabaseService();
                 var locations = await db.GetAllLocationsAsync();
 
                 SavedLocations.Clear();
                 foreach (var loc in locations)
+                {
                     SavedLocations.Add(loc);
+                }
+
+                System.Diagnostics.Debug.WriteLine($"Loaded {locations.Count} location(s) from database.");
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"Load locations error: {ex.Message}");
                 StatusMessage = "Error loading locations: " + ex.Message;
             }
         }
 
+        // Open route in Google Maps
         private async Task OpenAzureMapsRouteAsync(string destinationName, double destLat, double destLon)
         {
             try
@@ -265,6 +375,7 @@ namespace GPSdemo3.ViewModels
             }
         }
 
+        // Location permission helper
         private async Task<bool> EnsureLocationPermissionAsync()
         {
             var status = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
@@ -273,6 +384,7 @@ namespace GPSdemo3.ViewModels
             return status == PermissionStatus.Granted;
         }
 
+        // Reverse geocoding via Azure Maps
         private async Task ReverseGeocodeAsync(double lat, double lon)
         {
             try
